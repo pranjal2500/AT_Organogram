@@ -2,15 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collapsible Organization Chart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dynamic Organization Chart</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
+        :root {
+            --header-height: 70px;
+        }
+        
+        html {
+            /* Prevent browser zoom */
+            -ms-content-zooming: none;
+            -ms-touch-action: none;
+            touch-action: none;
+            overflow: hidden;
+        }
+        
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             overflow: hidden;
+            /* Prevent text selection during drag */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            transform: none !important;
+            /* Prevent browser zoom */
+            touch-action: none;
+            -ms-touch-action: none;
         }
         
         /* Header */
@@ -20,20 +41,31 @@
             left: 0; 
             right: 0; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px 40px; 
+            padding: 15px 40px; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
-            z-index: 100; 
+            z-index: 10000; 
             display: flex; 
             justify-content: space-between; 
-            align-items: center; 
+            align-items: center;
+            height: var(--header-height);
+            transform: none !important;
+            transform-origin: initial !important;
+            will-change: auto;
+            isolation: isolate;
+            contain: layout style paint;
         }
         
         h2 { 
             margin: 0; 
             color: #ffffff; 
-            font-size: 28px; 
+            font-size: 24px; 
             font-weight: 700;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 40px;
         }
         
         .header-right {
@@ -42,18 +74,83 @@
             gap: 25px;
         }
         
-        #last-update {
-            font-size: 13px;
-            color: rgba(255,255,255,0.9);
-            background: rgba(255,255,255,0.15);
+        .search-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        #search-input {
             padding: 8px 15px;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 14px;
+            min-width: 220px;
+            transition: all 0.3s ease;
+        }
+        
+        #search-input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        #search-input:focus {
+            outline: none;
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        .btn-search {
+            background: rgba(59, 130, 246, 0.4);
+            color: white;
+            border: 1px solid rgba(59, 130, 246, 0.6);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+        
+        .btn-search:hover {
+            background: rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
         }
         
         .controls {
             display: flex;
             gap: 10px;
+        }
+        
+        .zoom-hint {
+            position: fixed;
+            top: calc(var(--header-height) + 30px);
+            right: 40px;
+            background: rgba(255,255,255,0.9);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 9999;
+            white-space: nowrap;
+        }
+        
+        .zoom-hint kbd {
+            background: rgba(102, 126, 234, 0.15);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: monospace;
+            color: #667eea;
         }
         
         .btn {
@@ -66,6 +163,11 @@
             font-size: 14px;
             font-weight: 600;
             transition: all 0.3s ease;
+            /* Allow text selection in buttons */
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         }
         
         .btn:hover {
@@ -86,42 +188,74 @@
         #chart { 
             width: 100%; 
             height: 100vh;
-            padding-top: 80px;
+            padding-top: var(--header-height);
             background: radial-gradient(circle at 50% 50%, #ffffff 1px, transparent 1px) 0 0 / 30px 30px,
                         radial-gradient(circle at 50% 50%, #f0f0f0 1px, transparent 1px) 15px 15px / 30px 30px;
             overflow: hidden;
+            /* Add grab cursor for the chart area */
+            cursor: grab;
+            /* Prevent browser native zoom/pinch gestures */
+            touch-action: none;
         }
 
-        /* Node Styling */
+        /* SVG specific cursor handling */
+        #chart svg {
+            cursor: grab;
+            touch-action: none;
+        }
+        
+        #chart svg:active {
+            cursor: grabbing;
+        }
+
+        /* Node Styling - CARD BASED */
         .node {
             cursor: pointer;
         }
         
-        .node circle { 
-            fill: #fff;
+        .node rect { 
+            fill: #ffffff;
             stroke: #667eea;
-            stroke-width: 3px;
+            stroke-width: 2px;
             transition: all 0.3s ease;
-            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            rx: 8;
+            ry: 8;
         }
         
-        .node.has-children circle {
-            fill: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        .node.has-children rect {
+            fill: #fef3c7;
         }
         
-        .node:hover circle { 
+        .node:hover rect { 
             stroke: #764ba2;
-            stroke-width: 4px;
-            filter: drop-shadow(0 8px 12px rgba(102, 126, 234, 0.3));
-            transform: scale(1.1);
+            stroke-width: 3px;
+            filter: drop-shadow(0 4px 8px rgba(102, 126, 234, 0.3));
         }
         
         .node text { 
-            font-size: 12px; 
-            font-weight: 600; 
-            fill: #1f2937; 
+            font-size: 11px;
+            font-weight: 500;
+            fill: #1f2937;
             pointer-events: none;
-            text-shadow: 0 1px 3px rgba(255,255,255,0.9);
+            user-select: none;
+        }
+        
+        .node-name {
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            fill: #111827 !important;
+        }
+        
+        .node-label {
+            font-size: 10px !important;
+            fill: #6b7280 !important;
+            font-weight: 600 !important;
+        }
+        
+        .node-value {
+            font-size: 10px !important;
+            fill: #374151 !important;
         }
 
         /* Link Styling */
@@ -134,18 +268,42 @@
         }
 
         /* Collapsed indicator */
-        .node.collapsed circle {
+        .node.collapsed rect {
             fill: #fef3c7;
             stroke: #f59e0b;
-            stroke-width: 4px;
+            stroke-width: 3px;
+        }
+        
+        /* Highlight searched node */
+        .node.highlighted rect {
+            fill: #dbeafe;
+            stroke: #3b82f6;
+            stroke-width: 3px;
+            animation: pulse 2s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { 
+                stroke: #3b82f6;
+                filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+            }
+            50% { 
+                stroke: #1d4ed8;
+                filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.8));
+            }
         }
         
         /* Count badge for collapsed nodes */
         .count-badge {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
-            fill: #dc2626;
+            fill: #ffffff;
             pointer-events: none;
+            user-select: none;
+        }
+        
+        .count-badge-bg {
+            fill: #ef4444;
         }
 
         /* Tooltip */
@@ -163,6 +321,11 @@
             max-width: 350px;
             z-index: 1000;
             transition: opacity 0.2s ease;
+            /* Allow text selection in tooltip */
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         }
         
         .tooltip-header {
@@ -234,17 +397,32 @@
 <body>
 
 <header>
-    <h2>📊 Organization Hierarchy</h2>
+    <h2>
+        <span style="font-size: 28px;">🏢</span>
+        <span>Organization Chart</span>
+    </h2>
     <div class="header-right">
-        <div id="last-update">Loading...</div>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search employee name..." />
+            <button class="btn-search" onclick="searchEmployee()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                Search
+            </button>
+        </div>
         <div class="controls">
             <button class="btn btn-refresh" onclick="manualRefresh()">🔄 Refresh Data</button>
-            <button class="btn" onclick="expandAll()">Expand All</button>
-            <button class="btn" onclick="collapseAll()">Collapse All</button>
-            <button class="btn" onclick="resetZoom()">Reset View</button>
+            <button class="btn" onclick="collapseAll()">Collapse All (C)</button>
+            <button class="btn" onclick="resetZoom()">Reset View (R)</button>
         </div>
     </div>
 </header>
+
+<div class="zoom-hint">
+    Use <kbd>-</kbd> / <kbd>+</kbd> to zoom
+</div>
 
 <div id="chart"></div>
 <div id="tooltip" class="tooltip"></div>
@@ -256,37 +434,40 @@
 // =======================================================
 // CONFIGURATION
 // =======================================================
+
 const SHEET_ID = "1lemebG36uQ9MlbKZC_O2H_ltJZZI8aXFlnWlMbD4MXA"; // Replace with your Google Sheet ID
 const SHEET_NAME = "Sheet1"; // Replace with your sheet name
 
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
 
 // Chart dimensions
+const HEADER_HEIGHT = 70; // Must match --header-height in CSS
 const width = window.innerWidth;
-const height = window.innerHeight - 80;
-const nodeRadius = 12;
-const verticalSpacing = 100;
-const horizontalSpacing = 180;
+const height = window.innerHeight - HEADER_HEIGHT;
+const nodeWidth = 280;
+const nodeHeight = 100;
+const verticalSpacing = 140;
+const horizontalSpacing = 300;
 
 // Global variables
 let root;
 let svg, g, tree, zoom;
 let tooltip;
 let currentTransform = null; // Track current zoom/pan state
+let isDragging = false;
 
 // =======================================================
 // INITIALIZE
 // =======================================================
 function initialize() {
-    tooltip = d3.select("#tooltip");
-    
-    // Add event listeners to tooltip to keep it visible
-    tooltip.on("mouseenter", function() {
-        clearTimeout(hideTimeout);
-    })
-    .on("mouseleave", function() {
-        tooltip.style("opacity", 0);
-    });
+    // Prevent browser zoom on chart area specifically
+    const chartDiv = document.getElementById('chart');
+    chartDiv.addEventListener('wheel', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, { passive: false, capture: true });
     
     // Create SVG
     svg = d3.select("#chart").append("svg")
@@ -294,12 +475,37 @@ function initialize() {
         .attr("height", height)
         .style("display", "block");
     
-    // Create zoom behavior
+    // Create zoom behavior with improved settings
     zoom = d3.zoom()
         .scaleExtent([0.1, 3])
+        .filter(event => {
+            // Allow zoom with wheel, but prevent it on buttons/controls
+            if (event.type === 'wheel') return true;
+            if (event.type === 'dblclick') return true;
+            
+            // Only allow drag with left mouse button
+            if (event.type === 'mousedown') return event.button === 0;
+            
+            return !event.button;
+        })
+        .on("start", function(event) {
+            // Change cursor to grabbing when dragging starts
+            d3.select("#chart").style("cursor", "grabbing");
+            isDragging = true;
+            hideTooltip(); // Hide tooltip when dragging starts
+        })
         .on("zoom", (event) => {
             g.attr("transform", event.transform);
             currentTransform = event.transform; // Save current state
+        })
+        .on("end", function(event) {
+            // Reset cursor after dragging ends
+            setTimeout(() => {
+                if (!isDragging) {
+                    d3.select("#chart").style("cursor", "grab");
+                }
+            }, 50);
+            isDragging = false;
         });
     
     svg.call(zoom);
@@ -312,6 +518,12 @@ function initialize() {
     tree = d3.tree()
         .nodeSize([horizontalSpacing, verticalSpacing])
         .separation((a, b) => (a.parent === b.parent ? 1 : 1.2));
+    
+    // Add event listener to reset cursor when mouse leaves chart area
+    d3.select("#chart").on("mouseleave", function() {
+        d3.select("#chart").style("cursor", "grab");
+        isDragging = false;
+    });
     
     // Load data
     loadAndRenderData();
@@ -332,23 +544,44 @@ function loadAndRenderData() {
         // Create root
         root = d3.hierarchy(hierarchyData);
         
-        // Initialize with all collapsed except first level
+        // Collapse all children first
         root.children.forEach(collapse);
+        
+        // Then collapse the root itself so nothing shows on initial load
+        collapse(root);
         
         // Render
         update(root);
+
+        // --- ADD LOGO ABOVE LEVEL 0 ---
+        const logoWidth = 300;
+        const logoHeight = 150;
+        const logoGroup = g.append("g")
+            .attr("class", "logo-group")
+            .style("cursor", "pointer")
+            .on("click", () => {
+                toggle(root);
+                update(root);
+            });
+        
+        logoGroup.append("image")
+            .attr("xlink:href", "logo.png")
+            .attr("width", logoWidth)
+            .attr("height", logoHeight)
+            .attr("x", root.x - (logoWidth / 2)) 
+            .attr("y", root.y - (logoHeight / 4));
+        // ------------------------------
         
         // Center on root
         centerNode(root);
         
-        // Update timestamp
-        const now = new Date().toLocaleTimeString();
-        document.getElementById('last-update').textContent = `Updated: ${now}`;
         document.getElementById('loading').style.display = 'none';
+        
+        // Reset cursor after loading
+        d3.select("#chart").style("cursor", "grab");
         
     }).catch(error => {
         console.error("Error loading data:", error);
-        document.getElementById('last-update').textContent = `Error loading data`;
         document.getElementById('loading').style.display = 'none';
         alert("Error loading data from Google Sheets. Check console for details.");
     });
@@ -358,6 +591,9 @@ function loadAndRenderData() {
 function manualRefresh() {
     // Clear existing chart
     d3.select("#chart svg").remove();
+    
+    // Reset cursor
+    d3.select("#chart").style("cursor", "default");
     
     // Recreate SVG structure
     svg = d3.select("#chart").append("svg")
@@ -381,20 +617,78 @@ function manualRefresh() {
 // BUILD HIERARCHY
 // =======================================================
 function buildHierarchy(data) {
-    // Create a map of all employees
+    // First pass: Create empid-to-id and name-to-employee mapping
+    const empidToId = new Map();
+    const nameToEmployees = new Map(); // Store array of employees with same name
+    
+    data.forEach(row => {
+        const name = row.Name ? row.Name.trim() : "";
+        const id = row.Id ? row.Id.toString().trim() : "";
+        const empid = row.Empid ? row.Empid.trim() : "";
+        const remark = row.Remark ? row.Remark.trim() : "";
+        
+        // Skip employees with Remark = "No"
+        if (remark.toLowerCase() === "no") {
+            return;
+        }
+        
+        if (name && id && empid) {
+            empidToId.set(empid, id);
+            
+            // Handle duplicate names by storing arrays
+            if (!nameToEmployees.has(name)) {
+                nameToEmployees.set(name, []);
+            }
+            nameToEmployees.get(name).push({ id, empid, name });
+        }
+    });
+    
+    // Second pass: Create employee map using ID as key
     const employeeMap = new Map();
     
     data.forEach(row => {
         const name = row.Name ? row.Name.trim() : "";
-        if (!name) return;
+        const id = row.Id ? row.Id.toString().trim() : "";
+        const empid = row.Empid ? row.Empid.trim() : "";
+        const remark = row.Remark ? row.Remark.trim() : "";
         
-        employeeMap.set(name, {
+        // Skip employees with Remark = "No"
+        if (remark.toLowerCase() === "no") {
+            console.log(`Skipping employee ${name} (${empid}) - Remark is 'No'`);
+            return;
+        }
+        
+        if (!name || !id || !empid) return;
+        
+        const managerName = row["Reporting Manager"] ? row["Reporting Manager"].trim() : "-";
+        let managerId = "-";
+        
+        // Try to find manager ID
+        if (managerName !== "-" && managerName !== "") {
+            const potentialManagers = nameToEmployees.get(managerName);
+            
+            if (potentialManagers && potentialManagers.length === 1) {
+                // Only one person with this name - safe to use
+                managerId = potentialManagers[0].id;
+            } else if (potentialManagers && potentialManagers.length > 1) {
+                // Multiple people with same name - log warning
+                console.warn(`Multiple managers found with name "${managerName}" for employee ${name} (${empid}). Using first match.`);
+                managerId = potentialManagers[0].id;
+            } else {
+                // Manager name not found
+                console.warn(`Manager "${managerName}" not found for employee ${name} (${empid})`);
+            }
+        }
+        
+        employeeMap.set(id, {
+            id: id,
             name: name,
-            empid: row.Empid || "",
+            empid: empid,
             department: row["Department Name"] || "",
             designation: row.Designation || "",
             grade: row.Grade || "",
-            manager: row["Reporting Manager"] ? row["Reporting Manager"].trim() : "-",
+            managerName: managerName,
+            managerId: managerId,
             email: row.Email || "",
             mobile: row.Mobileno || "",
             doj: row.Doj || "",
@@ -407,39 +701,44 @@ function buildHierarchy(data) {
     const topManagers = [];
     const assignedEmployees = new Set();
     
-    employeeMap.forEach((employee, name) => {
-        if (employee.manager === "-" || employee.manager === "") {
+    employeeMap.forEach((employee, id) => {
+        if (employee.managerId === "-" || employee.managerId === undefined) {
             topManagers.push(employee);
-            assignedEmployees.add(name);
+            assignedEmployees.add(id);
         }
     });
     
     console.log("Top managers:", topManagers.length);
     
-    // Build parent-child relationships
-    employeeMap.forEach((employee, name) => {
-        if (employee.manager !== "-" && employee.manager !== "") {
-            const manager = employeeMap.get(employee.manager);
+    // Build parent-child relationships using IDs
+    employeeMap.forEach((employee, id) => {
+        if (employee.managerId !== "-" && employee.managerId !== undefined) {
+            const manager = employeeMap.get(employee.managerId);
             if (manager) {
                 manager.children.push(employee);
-                assignedEmployees.add(name);
+                assignedEmployees.add(id);
             } else {
-                console.warn("Manager not found:", employee.manager, "for employee:", name);
+                console.warn("Manager not found:", employee.managerName, "(ID lookup failed) for employee:", employee.name);
             }
         }
     });
     
     // Handle orphaned employees (those whose manager doesn't exist)
     const orphans = [];
-    employeeMap.forEach((employee, name) => {
-        if (!assignedEmployees.has(name)) {
+    employeeMap.forEach((employee, id) => {
+        if (!assignedEmployees.has(id)) {
             orphans.push(employee);
         }
     });
     
     if (orphans.length > 0) {
         console.warn("Orphaned employees (no valid manager):", orphans.length);
+        console.warn("Orphaned employee names:", orphans.map(e => e.name));
     }
+    
+    console.log("Total employees processed:", employeeMap.size);
+    console.log("Employees in hierarchy:", assignedEmployees.size);
+    console.log("Missing from chart:", employeeMap.size - assignedEmployees.size);
     
     // Create virtual root
     const rootNode = {
@@ -457,8 +756,8 @@ function buildHierarchy(data) {
 function update(source) {
     // Compute the new tree layout
     const treeData = tree(root);
-    const nodes = treeData.descendants();
-    const links = treeData.links();
+    const nodes = treeData.descendants().filter(d => !d.data.isVirtual);
+    const links = treeData.links().filter(d => !d.target.data.isVirtual);
     
     // Update nodes
     const node = g.selectAll(".node")
@@ -469,28 +768,126 @@ function update(source) {
         .attr("class", "node")
         .attr("transform", d => `translate(${source.x0 || 0},${source.y0 || 0})`)
         .on("click", (event, d) => {
-            if (d.data.isVirtual) return;
             toggle(d);
             update(d);
         })
-        .on("mouseover", showTooltip)
-        .on("mouseout", hideTooltip);
+        .on("mousedown", function(event) {
+            // Prevent drag from starting on node click
+            event.stopPropagation();
+        });
     
-    nodeEnter.append("circle")
-        .attr("r", 1e-6)
+    // Add card rectangle
+    nodeEnter.append("rect")
+        .attr("width", nodeWidth)
+        .attr("height", nodeHeight)
+        .attr("x", -nodeWidth / 2)
+        .attr("y", -nodeHeight / 2)
         .style("fill", d => d._children ? "#fef3c7" : "#fff");
     
-    // Add name label
+    // Add name at top
     nodeEnter.append("text")
-        .attr("dy", -18)
+        .attr("class", "node-name")
+        .attr("dy", -nodeHeight / 2 + 18)
         .attr("text-anchor", "middle")
-        .text(d => d.data.isVirtual ? "" : d.data.name)
+        .text(d => d.data.name)
         .style("fill-opacity", 1e-6);
     
-    // Add count badge for collapsed nodes
+    // Add separator line
+    nodeEnter.append("line")
+        .attr("x1", -nodeWidth / 2 + 10)
+        .attr("x2", nodeWidth / 2 - 10)
+        .attr("y1", -nodeHeight / 2 + 28)
+        .attr("y2", -nodeHeight / 2 + 28)
+        .attr("stroke", "#e5e7eb")
+        .attr("stroke-width", 1);
+    
+    // Left column - Emp ID
     nodeEnter.append("text")
+        .attr("class", "node-label")
+        .attr("x", -nodeWidth / 2 + 15)
+        .attr("y", -nodeHeight / 2 + 45)
+        .attr("text-anchor", "start")
+        .text("ID:")
+        .style("fill-opacity", 1e-6);
+    
+    nodeEnter.append("text")
+        .attr("class", "node-value")
+        .attr("x", -nodeWidth / 2 + 15)
+        .attr("y", -nodeHeight / 2 + 57)
+        .attr("text-anchor", "start")
+        .text(d => d.data.empid || "-")
+        .style("fill-opacity", 1e-6);
+    
+    // Left column - Department
+    nodeEnter.append("text")
+        .attr("class", "node-label")
+        .attr("x", -nodeWidth / 2 + 15)
+        .attr("y", -nodeHeight / 2 + 72)
+        .attr("text-anchor", "start")
+        .text("Dept:")
+        .style("fill-opacity", 1e-6);
+    
+    nodeEnter.append("text")
+        .attr("class", "node-value")
+        .attr("x", -nodeWidth / 2 + 15)
+        .attr("y", -nodeHeight / 2 + 84)
+        .attr("text-anchor", "start")
+        .text(d => {
+            const dept = d.data.department || "-";
+            return dept.length > 22 ? dept.substring(0, 22) + "..." : dept;
+        })
+        .style("fill-opacity", 1e-6);
+    
+    // Right column - Grade
+    nodeEnter.append("text")
+        .attr("class", "node-label")
+        .attr("x", nodeWidth / 2 - 15)
+        .attr("y", -nodeHeight / 2 + 45)
+        .attr("text-anchor", "end")
+        .text("Grade:")
+        .style("fill-opacity", 1e-6);
+    
+    nodeEnter.append("text")
+        .attr("class", "node-value")
+        .attr("x", nodeWidth / 2 - 15)
+        .attr("y", -nodeHeight / 2 + 57)
+        .attr("text-anchor", "end")
+        .text(d => d.data.grade || "-")
+        .style("fill-opacity", 1e-6);
+    
+    // Right column - Designation
+    nodeEnter.append("text")
+        .attr("class", "node-label")
+        .attr("x", nodeWidth / 2 - 15)
+        .attr("y", -nodeHeight / 2 + 72)
+        .attr("text-anchor", "end")
+        .text("Designation:")
+        .style("fill-opacity", 1e-6);
+    
+    nodeEnter.append("text")
+        .attr("class", "node-value")
+        .attr("x", nodeWidth / 2 - 15)
+        .attr("y", -nodeHeight / 2 + 84)
+        .attr("text-anchor", "end")
+        .text(d => {
+            const desig = d.data.designation || "-";
+            return desig.length > 28 ? desig.substring(0, 28) + "..." : desig;
+        })
+        .style("fill-opacity", 1e-6);
+    
+    // Add count badge for collapsed nodes (top right corner)
+    const badgeGroup = nodeEnter.append("g")
+        .attr("class", "badge-group")
+        .attr("transform", `translate(${nodeWidth / 2 - 28}, ${-nodeHeight / 2 + 15})`)
+        .style("opacity", d => d._children ? 1 : 0);
+    
+    badgeGroup.append("circle")
+        .attr("class", "count-badge-bg")
+        .attr("r", 14);
+    
+    badgeGroup.append("text")
         .attr("class", "count-badge")
-        .attr("dy", 5)
+        .attr("dy", "0.35em")
         .attr("text-anchor", "middle")
         .text(d => {
             if (d._children) {
@@ -507,16 +904,18 @@ function update(source) {
         .duration(750)
         .attr("transform", d => `translate(${d.x},${d.y})`);
     
-    nodeUpdate.select("circle")
-        .attr("r", d => d.data.isVirtual ? 0 : nodeRadius)
+    nodeUpdate.select("rect")
         .style("fill", d => d._children ? "#fef3c7" : "#fff")
         .style("stroke", d => d._children ? "#f59e0b" : "#667eea")
         .attr("class", d => d._children ? "collapsed" : "");
     
     nodeUpdate.selectAll("text")
-        .style("fill-opacity", d => d.data.isVirtual ? 0 : 1);
+        .style("fill-opacity", 1);
     
-    nodeUpdate.select(".count-badge")
+    nodeUpdate.select(".badge-group")
+        .style("opacity", d => d._children ? 1 : 0);
+    
+    nodeUpdate.select(".badge-group .count-badge")
         .text(d => {
             if (d._children) {
                 return `+${countDescendants(d)}`;
@@ -530,8 +929,8 @@ function update(source) {
         .attr("transform", d => `translate(${source.x},${source.y})`)
         .remove();
     
-    nodeExit.select("circle")
-        .attr("r", 1e-6);
+    nodeExit.select("rect")
+        .style("opacity", 1e-6);
     
     nodeExit.selectAll("text")
         .style("fill-opacity", 1e-6);
@@ -573,9 +972,17 @@ function update(source) {
 // =======================================================
 function toggle(d) {
     if (d.children) {
-        d._children = d.children;
-        d.children = null;
+        // When collapsing, also collapse all descendants
+        function collapseAll(node) {
+            if (node.children) {
+                node._children = node.children;
+                node._children.forEach(collapseAll);
+                node.children = null;
+            }
+        }
+        collapseAll(d);
     } else {
+        // When expanding, just expand this level
         d.children = d._children;
         d._children = null;
     }
@@ -599,29 +1006,38 @@ function expand(d) {
 
 function countDescendants(d) {
     let count = 0;
-    if (d._children) {
-        count = d._children.length;
-        d._children.forEach(child => {
+    
+    // Count both visible children and collapsed children
+    const childArray = d._children || d.children;
+    
+    if (childArray) {
+        count = childArray.length;
+        childArray.forEach(child => {
             count += countDescendants(child);
         });
     }
+    
     return count;
 }
 
 function expandAll() {
-    root.children.forEach(expand);
+    expand(root);
     update(root);
 }
 
 function collapseAll() {
-    root.children.forEach(collapse);
+    // First collapse all children recursively
+    if (root.children) {
+        root.children.forEach(collapse);
+    }
+    // Then collapse the root itself to hide top-level employees
+    collapse(root);
     update(root);
 }
 
 function resetZoom() {
-    svg.transition()
-        .duration(750)
-        .call(zoom.transform, d3.zoomIdentity.translate(width / 2, 50));
+    centerNode(root);
+    d3.select("#chart").style("cursor", "grab");
 }
 
 function centerNode(source) {
@@ -635,80 +1051,282 @@ function centerNode(source) {
 }
 
 // =======================================================
-// TOOLTIP
+// TOOLTIP - REMOVED (Info now displayed on cards)
 // =======================================================
-let hideTimeout;
+// let hideTimeout;
+// function showTooltip(event, d) { ... }
+// function hideTooltip() { ... }
 
-function showTooltip(event, d) {
-    if (d.data.isVirtual) return;
+// =======================================================
+// SEARCH FUNCTIONALITY
+// =======================================================
+function searchEmployee() {
+    const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
     
-    clearTimeout(hideTimeout);
-    
-    const data = d.data;
-    const directReports = (d.children || d._children || []).length;
-    const totalReports = countDescendants(d);
-    
-    let html = `
-        <div class="tooltip-header">
-            <h4>${data.name}</h4>
-        </div>
-        <div class="tooltip-body">
-            <div class="tooltip-row">
-                <span class="tooltip-label">Emp ID:</span>
-                <span class="tooltip-value">${data.empid || 'N/A'}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Department:</span>
-                <span class="tooltip-value">${data.department || 'N/A'}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Grade:</span>
-                <span class="tooltip-value">${data.grade || 'N/A'}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Designation:</span>
-                <span class="tooltip-value">${data.designation || 'N/A'}</span>
-            </div>
-    `;
-    
-    if (directReports > 0) {
-        html += `
-            <div class="tooltip-row">
-                <span class="tooltip-label">Direct Reports:</span>
-                <span class="tooltip-value">${directReports}</span>
-            </div>
-        `;
+    if (!searchTerm) {
+        alert("Please enter a name to search");
+        return;
     }
     
-    if (totalReports > 0) {
-        html += `
-            <div class="tooltip-row">
-                <span class="tooltip-label">Total Team:</span>
-                <span class="tooltip-value">${totalReports}</span>
-            </div>
-        `;
+    // Remove previous highlights
+    g.selectAll(".node").classed("highlighted", false);
+    
+    // Find the node with matching name (search through ALL nodes, including collapsed)
+    let foundNode = null;
+    
+    function searchInNode(node) {
+        if (node.data.name && node.data.name.toLowerCase().includes(searchTerm)) {
+            foundNode = node;
+            return true;
+        }
+        
+        // Search in visible children
+        if (node.children) {
+            for (let child of node.children) {
+                if (searchInNode(child)) return true;
+            }
+        }
+        
+        // Search in collapsed children
+        if (node._children) {
+            for (let child of node._children) {
+                if (searchInNode(child)) return true;
+            }
+        }
+        
+        return false;
     }
     
-    html += `</div>`;
+    searchInNode(root);
     
-    tooltip.html(html)
-        .style("opacity", 1)
-        .style("left", (event.pageX + 15) + "px")
-        .style("top", (event.pageY + 15) + "px");
+    if (!foundNode) {
+        alert(`No employee found with name: "${searchTerm}"`);
+        return;
+    }
+    
+    // Collapse all nodes recursively
+    function collapseNode(d) {
+        if (d.children) {
+            d._children = d.children;
+            d._children.forEach(collapseNode);
+            d.children = null;
+        }
+    }
+    
+    // Collapse everything including root's children
+    if (root.children) {
+        root.children.forEach(collapseNode);
+    }
+    
+    // Expand path from root to the found node (but NOT the found node itself)
+    expandPathToNode(foundNode);
+    
+    // Update the tree
+    update(root);
+    
+    // Center and zoom on the found node after a short delay to allow tree to render
+    setTimeout(() => {
+        centerAndHighlightNode(foundNode);
+    }, 800);
 }
 
-function hideTooltip() {
-    hideTimeout = setTimeout(() => {
-        tooltip.style("opacity", 0);
-    }, 200);
+function expandPathToNode(node) {
+    // Build path from node to root (excluding the node itself)
+    const path = [];
+    let current = node.parent; // Start from parent, not the node itself
+    
+    while (current) {
+        path.unshift(current);
+        current = current.parent;
+    }
+    
+    // Expand all nodes in the path (but not the searched node)
+    path.forEach(d => {
+        if (d._children) {
+            d.children = d._children;
+            d._children = null;
+        }
+    });
 }
+
+function centerAndHighlightNode(node) {
+    // Center on the node
+    const scale = 1;
+    const x = -node.x * scale + width / 2;
+    const y = -node.y * scale + height / 2;
+    
+    svg.transition()
+        .duration(750)
+        .call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(scale));
+    
+    // Highlight the node
+    g.selectAll(".node")
+        .filter(d => d === node)
+        .classed("highlighted", true);
+    
+    // Remove highlight after 4 seconds
+    setTimeout(() => {
+        g.selectAll(".node").classed("highlighted", false);
+    }, 4000);
+}
+
+// Add Enter key listener to search input
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchEmployee();
+            }
+        });
+    }
+});
+
+// =======================================================
+// KEYBOARD SHORTCUTS
+// =======================================================
+document.addEventListener('keydown', function(e) {
+    // Don't trigger shortcuts if user is typing in input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+    }
+    
+    const key = e.key.toLowerCase();
+    
+    if (key === 'c') {
+        collapseAll();
+    } else if (key === 'r') {
+        resetZoom();
+    }
+});
+
+// =======================================================
+// PREVENT BROWSER ZOOM (Allow only D3 zoom on chart)
+// =======================================================
+document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+});
+
+document.addEventListener('gesturechange', function(e) {
+    e.preventDefault();
+});
+
+document.addEventListener('gestureend', function(e) {
+    e.preventDefault();
+});
+
+// Prevent ctrl/cmd + scroll zoom
+document.addEventListener('wheel', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+// Prevent pinch zoom
+document.addEventListener('touchmove', function(e) {
+    if (e.touches.length > 1) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+// Prevent double-tap zoom on mobile
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
 
 // =======================================================
 // AUTO-REFRESH - REMOVED (Now using manual refresh button)
 // =======================================================
 
+// =======================================================
+// KEYBOARD ARROW KEY NAVIGATION
+// =======================================================
+document.addEventListener('keydown', function(e) {
+    // Check if arrow keys are pressed
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault(); // Prevent default scrolling behavior
+        
+        // Get current transform
+        const currentTransform = d3.zoomTransform(svg.node());
+        
+        // Define pan distance (adjust this value to change pan speed)
+        const panDistance = 30;
+        
+        // Calculate new translation based on arrow key
+        let newX = currentTransform.x;
+        let newY = currentTransform.y;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                newX += panDistance;
+                break;
+            case 'ArrowRight':
+                newX -= panDistance;
+                break;
+            case 'ArrowUp':
+                newY += panDistance;
+                break;
+            case 'ArrowDown':
+                newY -= panDistance;
+                break;
+        }
+        
+        // Apply the new transform immediately without transition for responsive movement
+        svg.call(zoom.transform, d3.zoomIdentity
+            .translate(newX, newY)
+            .scale(currentTransform.k));
+    }
+    
+    // Check for + or - keys for zooming
+    if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_') {
+        e.preventDefault(); // Prevent default browser zoom
+        
+        // Get current transform
+        const currentTransform = d3.zoomTransform(svg.node());
+        
+        // Define zoom factor
+        const zoomFactor = 1.2;
+        let newScale = currentTransform.k;
+        
+        // Calculate new scale based on key pressed
+        if (e.key === '+' || e.key === '=') {
+            newScale = currentTransform.k * zoomFactor;
+        } else if (e.key === '-' || e.key === '_') {
+            newScale = currentTransform.k / zoomFactor;
+        }
+        
+        // Clamp scale to reasonable limits (same as mouse zoom)
+        newScale = Math.max(0.1, Math.min(3, newScale));
+        
+        // Calculate the zoom center (center of viewport)
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        // Calculate new translation to zoom towards center
+        const newX = centerX - (centerX - currentTransform.x) * (newScale / currentTransform.k);
+        const newY = centerY - (centerY - currentTransform.y) * (newScale / currentTransform.k);
+        
+        // Apply the new transform with smooth transition
+        svg.transition()
+            .duration(300)
+            .call(zoom.transform, d3.zoomIdentity
+                .translate(newX, newY)
+                .scale(newScale));
+    }
+});
+
 // Initialize on load
 initialize();
+
+// Handle window resize
+window.addEventListener('resize', function() {
+    // You can add resize handling if needed
+});
 </script>
 
 </body>
