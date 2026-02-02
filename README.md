@@ -1,2 +1,2 @@
 ### Chart here:
-https://pranjal2500/AT_Organogram
+https://pranjal2500.github.io/AT_Organogram
