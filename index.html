@@ -445,8 +445,8 @@ const HEADER_HEIGHT = 70; // Must match --header-height in CSS
 const width = window.innerWidth;
 const height = window.innerHeight - HEADER_HEIGHT;
 const nodeWidth = 280;
-const nodeHeight = 100;
-const verticalSpacing = 140;
+const nodeHeight = 150;
+const verticalSpacing = 180;
 const horizontalSpacing = 300;
 
 // Global variables
@@ -492,7 +492,6 @@ function initialize() {
             // Change cursor to grabbing when dragging starts
             d3.select("#chart").style("cursor", "grabbing");
             isDragging = true;
-            hideTooltip(); // Hide tooltip when dragging starts
         })
         .on("zoom", (event) => {
             g.attr("transform", event.transform);
@@ -687,6 +686,7 @@ function buildHierarchy(data) {
             department: row["Department Name"] || "",
             designation: row.Designation || "",
             grade: row.Grade || "",
+            location: row["Base Location"] || "",
             managerName: managerName,
             managerId: managerId,
             email: row.Email || "",
@@ -772,11 +772,10 @@ function update(source) {
             update(d);
         })
         .on("mousedown", function(event) {
-            // Prevent drag from starting on node click
             event.stopPropagation();
         });
     
-    // Add card rectangle
+    // 1. CARD BACKGROUND
     nodeEnter.append("rect")
         .attr("width", nodeWidth)
         .attr("height", nodeHeight)
@@ -784,98 +783,96 @@ function update(source) {
         .attr("y", -nodeHeight / 2)
         .style("fill", d => d._children ? "#fef3c7" : "#fff");
     
-    // Add name at top
+    // 2. NAME (Header)
     nodeEnter.append("text")
         .attr("class", "node-name")
-        .attr("dy", -nodeHeight / 2 + 18)
+        .attr("dy", -nodeHeight / 2 + 20)
         .attr("text-anchor", "middle")
         .text(d => d.data.name)
         .style("fill-opacity", 1e-6);
     
-    // Add separator line
+    // 3. SEPARATOR LINE
     nodeEnter.append("line")
-        .attr("x1", -nodeWidth / 2 + 10)
-        .attr("x2", nodeWidth / 2 - 10)
-        .attr("y1", -nodeHeight / 2 + 28)
-        .attr("y2", -nodeHeight / 2 + 28)
+        .attr("x1", -nodeWidth / 2 + 20)
+        .attr("x2", nodeWidth / 2 - 20)
+        .attr("y1", -nodeHeight / 2 + 35)
+        .attr("y2", -nodeHeight / 2 + 35)
         .attr("stroke", "#e5e7eb")
         .attr("stroke-width", 1);
+
+    // --- NEW 5-ITEM LIST (Adjusted Spacing) ---
     
-    // Left column - Emp ID
+    // Item 1: Empid
     nodeEnter.append("text")
         .attr("class", "node-label")
-        .attr("x", -nodeWidth / 2 + 15)
-        .attr("y", -nodeHeight / 2 + 45)
-        .attr("text-anchor", "start")
-        .text("ID:")
+        .attr("x", 0)
+        .attr("y", -12)  // Moved up
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .style("font-weight", "500")
+        .style("fill", "#4b5563")
+        .text(d => `Empid: ${d.data.empid || "-"}`)
         .style("fill-opacity", 1e-6);
-    
-    nodeEnter.append("text")
-        .attr("class", "node-value")
-        .attr("x", -nodeWidth / 2 + 15)
-        .attr("y", -nodeHeight / 2 + 57)
-        .attr("text-anchor", "start")
-        .text(d => d.data.empid || "-")
-        .style("fill-opacity", 1e-6);
-    
-    // Left column - Department
+
+    // Item 2: Dept
     nodeEnter.append("text")
         .attr("class", "node-label")
-        .attr("x", -nodeWidth / 2 + 15)
-        .attr("y", -nodeHeight / 2 + 72)
-        .attr("text-anchor", "start")
-        .text("Dept:")
-        .style("fill-opacity", 1e-6);
-    
-    nodeEnter.append("text")
-        .attr("class", "node-value")
-        .attr("x", -nodeWidth / 2 + 15)
-        .attr("y", -nodeHeight / 2 + 84)
-        .attr("text-anchor", "start")
+        .attr("x", 0)
+        .attr("y", 4)   // Moved up
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .style("font-weight", "500")
+        .style("fill", "#4b5563")
         .text(d => {
-            const dept = d.data.department || "-";
-            return dept.length > 22 ? dept.substring(0, 22) + "..." : dept;
+            const val = d.data.department || "-";
+            return `Dept: ${val.length > 28 ? val.substring(0, 28) + "..." : val}`;
         })
         .style("fill-opacity", 1e-6);
-    
-    // Right column - Grade
+
+    // Item 3: Desig
     nodeEnter.append("text")
         .attr("class", "node-label")
-        .attr("x", nodeWidth / 2 - 15)
-        .attr("y", -nodeHeight / 2 + 45)
-        .attr("text-anchor", "end")
-        .text("Grade:")
-        .style("fill-opacity", 1e-6);
-    
-    nodeEnter.append("text")
-        .attr("class", "node-value")
-        .attr("x", nodeWidth / 2 - 15)
-        .attr("y", -nodeHeight / 2 + 57)
-        .attr("text-anchor", "end")
-        .text(d => d.data.grade || "-")
-        .style("fill-opacity", 1e-6);
-    
-    // Right column - Designation
-    nodeEnter.append("text")
-        .attr("class", "node-label")
-        .attr("x", nodeWidth / 2 - 15)
-        .attr("y", -nodeHeight / 2 + 72)
-        .attr("text-anchor", "end")
-        .text("Designation:")
-        .style("fill-opacity", 1e-6);
-    
-    nodeEnter.append("text")
-        .attr("class", "node-value")
-        .attr("x", nodeWidth / 2 - 15)
-        .attr("y", -nodeHeight / 2 + 84)
-        .attr("text-anchor", "end")
+        .attr("x", 0)
+        .attr("y", 20)  // Moved up
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .style("font-weight", "500")
+        .style("fill", "#4b5563")
         .text(d => {
-            const desig = d.data.designation || "-";
-            return desig.length > 28 ? desig.substring(0, 28) + "..." : desig;
+            const val = d.data.designation || "-";
+            return `Desig: ${val.length > 28 ? val.substring(0, 28) + "..." : val}`;
         })
+        .style("fill-opacity", 1e-6)
+        .append("title")
+        .text(d => d.data.designation);
+
+    // Item 4: Grade
+    nodeEnter.append("text")
+        .attr("class", "node-label")
+        .attr("x", 0)
+        .attr("y", 36)  // Moved up
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .style("font-weight", "500")
+        .style("fill", "#4b5563")
+        .text(d => `Grade: ${d.data.grade || "-"}`)
         .style("fill-opacity", 1e-6);
+
+    // Item 5: Location (NEW)
+    nodeEnter.append("text")
+        .attr("class", "node-label")
+        .attr("x", 0)
+        .attr("y", 52)  // Bottom slot
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .style("font-weight", "500")
+        .style("fill", "#4b5563")
+        .text(d => `Base Location: ${d.data.location || "-"}`)
+        .style("fill-opacity", 1e-6);
+
+    // --- END LIST ---
     
-    // Add count badge for collapsed nodes (top right corner)
+    // Count badge logic
     const badgeGroup = nodeEnter.append("g")
         .attr("class", "badge-group")
         .attr("transform", `translate(${nodeWidth / 2 - 28}, ${-nodeHeight / 2 + 15})`)
@@ -889,15 +886,10 @@ function update(source) {
         .attr("class", "count-badge")
         .attr("dy", "0.35em")
         .attr("text-anchor", "middle")
-        .text(d => {
-            if (d._children) {
-                return `+${countDescendants(d)}`;
-            }
-            return "";
-        })
+        .text(d => d._children ? `+${countDescendants(d)}` : "")
         .style("fill-opacity", 1e-6);
     
-    // Update existing nodes
+    // Transitions and updates
     const nodeUpdate = nodeEnter.merge(node);
     
     nodeUpdate.transition()
@@ -909,35 +901,21 @@ function update(source) {
         .style("stroke", d => d._children ? "#f59e0b" : "#667eea")
         .attr("class", d => d._children ? "collapsed" : "");
     
-    nodeUpdate.selectAll("text")
-        .style("fill-opacity", 1);
+    nodeUpdate.selectAll("text").style("fill-opacity", 1);
     
-    nodeUpdate.select(".badge-group")
-        .style("opacity", d => d._children ? 1 : 0);
+    nodeUpdate.select(".badge-group").style("opacity", d => d._children ? 1 : 0);
+    nodeUpdate.select(".badge-group .count-badge").text(d => d._children ? `+${countDescendants(d)}` : "");
     
-    nodeUpdate.select(".badge-group .count-badge")
-        .text(d => {
-            if (d._children) {
-                return `+${countDescendants(d)}`;
-            }
-            return "";
-        });
-    
-    // Remove exiting nodes
     const nodeExit = node.exit().transition()
         .duration(750)
         .attr("transform", d => `translate(${source.x},${source.y})`)
         .remove();
     
-    nodeExit.select("rect")
-        .style("opacity", 1e-6);
-    
-    nodeExit.selectAll("text")
-        .style("fill-opacity", 1e-6);
+    nodeExit.select("rect").style("opacity", 1e-6);
+    nodeExit.selectAll("text").style("fill-opacity", 1e-6);
     
     // Update links
-    const link = g.selectAll(".link")
-        .data(links, d => d.target.data.name);
+    const link = g.selectAll(".link").data(links, d => d.target.data.name);
     
     const linkEnter = link.enter().insert("path", "g")
         .attr("class", "link")
@@ -947,20 +925,13 @@ function update(source) {
     
     const linkUpdate = linkEnter.merge(link);
     
-    linkUpdate.transition()
-        .duration(750)
-        .attr("d", d3.linkVertical()
-            .x(d => d.x)
-            .y(d => d.y));
+    linkUpdate.transition().duration(750).attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
     
     link.exit().transition()
         .duration(750)
-        .attr("d", d3.linkVertical()
-            .x(d => source.x)
-            .y(d => source.y))
+        .attr("d", d3.linkVertical().x(d => source.x).y(d => source.y))
         .remove();
     
-    // Store old positions
     nodes.forEach(d => {
         d.x0 = d.x;
         d.y0 = d.y;
@@ -1036,7 +1007,21 @@ function collapseAll() {
 }
 
 function resetZoom() {
-    centerNode(root);
+    // Stop ALL ongoing transitions more aggressively
+    svg.selectAll("*").interrupt();
+    svg.interrupt();
+    d3.selectAll("*").interrupt();
+    
+    // Center on root with scale 1.0 and shifted 10px upwards
+    const scale = 1.0;
+    const x = -root.x * scale + width / 2;
+    const y = -root.y * scale + 40;  // Changed from 100 to 40 (60px upwards)
+    
+    // Apply transform with transition
+    svg.transition()
+        .duration(750)
+        .call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(scale));
+    
     d3.select("#chart").style("cursor", "grab");
 }
 
@@ -1193,12 +1178,95 @@ document.addEventListener('keydown', function(e) {
     
     const key = e.key.toLowerCase();
     
+    // Handle C and R shortcuts
     if (key === 'c') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         collapseAll();
+        return false;
     } else if (key === 'r') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         resetZoom();
+        return false;
     }
-});
+    
+    // Handle arrow keys for panning
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault(); // Prevent default scrolling behavior
+        
+        // Get current transform
+        const currentTransform = d3.zoomTransform(svg.node());
+        
+        // Define pan distance
+        const panDistance = 30;
+        
+        // Calculate new translation based on arrow key
+        let newX = currentTransform.x;
+        let newY = currentTransform.y;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                newX += panDistance;
+                break;
+            case 'ArrowRight':
+                newX -= panDistance;
+                break;
+            case 'ArrowUp':
+                newY += panDistance;
+                break;
+            case 'ArrowDown':
+                newY -= panDistance;
+                break;
+        }
+        
+        // Apply the new transform
+        svg.call(zoom.transform, d3.zoomIdentity
+            .translate(newX, newY)
+            .scale(currentTransform.k));
+        return false;
+    }
+    
+    // Handle + or - keys for zooming
+    if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_') {
+        e.preventDefault(); // Prevent default browser zoom
+        
+        // Get current transform
+        const currentTransform = d3.zoomTransform(svg.node());
+        
+        // Define zoom factor
+        const zoomFactor = 1.2;
+        let newScale = currentTransform.k;
+        
+        // Calculate new scale
+        if (e.key === '+' || e.key === '=') {
+            newScale = currentTransform.k * zoomFactor;
+        } else if (e.key === '-' || e.key === '_') {
+            newScale = currentTransform.k / zoomFactor;
+        }
+        
+        // Clamp scale to reasonable limits
+        newScale = Math.max(0.1, Math.min(3, newScale));
+        
+        // Calculate the zoom center (center of viewport)
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        // Calculate new translation to zoom towards center
+        const newX = centerX - (centerX - currentTransform.x) * (newScale / currentTransform.k);
+        const newY = centerY - (centerY - currentTransform.y) * (newScale / currentTransform.k);
+        
+        // Apply the new transform with smooth transition
+        svg.transition()
+            .duration(300)
+            .call(zoom.transform, d3.zoomIdentity
+                .translate(newX, newY)
+                .scale(newScale));
+        return false;
+    }
+}, true);
 
 // =======================================================
 // PREVENT BROWSER ZOOM (Allow only D3 zoom on chart)
@@ -1213,12 +1281,12 @@ document.addEventListener('gesturechange', function(e) {
 
 document.addEventListener('gestureend', function(e) {
     e.preventDefault();
-});
-
+})
 // Prevent ctrl/cmd + scroll zoom
 document.addEventListener('wheel', function(e) {
     if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
+;
     }
 }, { passive: false });
 
@@ -1245,87 +1313,13 @@ document.addEventListener('touchend', function(e) {
 
 // =======================================================
 // KEYBOARD ARROW KEY NAVIGATION
-// =======================================================
-document.addEventListener('keydown', function(e) {
-    // Check if arrow keys are pressed
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        e.preventDefault(); // Prevent default scrolling behavior
-        
-        // Get current transform
-        const currentTransform = d3.zoomTransform(svg.node());
-        
-        // Define pan distance (adjust this value to change pan speed)
-        const panDistance = 30;
-        
-        // Calculate new translation based on arrow key
-        let newX = currentTransform.x;
-        let newY = currentTransform.y;
-        
-        switch(e.key) {
-            case 'ArrowLeft':
-                newX += panDistance;
-                break;
-            case 'ArrowRight':
-                newX -= panDistance;
-                break;
-            case 'ArrowUp':
-                newY += panDistance;
-                break;
-            case 'ArrowDown':
-                newY -= panDistance;
-                break;
-        }
-        
-        // Apply the new transform immediately without transition for responsive movement
-        svg.call(zoom.transform, d3.zoomIdentity
-            .translate(newX, newY)
-            .scale(currentTransform.k));
-    }
-    
-    // Check for + or - keys for zooming
-    if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_') {
-        e.preventDefault(); // Prevent default browser zoom
-        
-        // Get current transform
-        const currentTransform = d3.zoomTransform(svg.node());
-        
-        // Define zoom factor
-        const zoomFactor = 1.2;
-        let newScale = currentTransform.k;
-        
-        // Calculate new scale based on key pressed
-        if (e.key === '+' || e.key === '=') {
-            newScale = currentTransform.k * zoomFactor;
-        } else if (e.key === '-' || e.key === '_') {
-            newScale = currentTransform.k / zoomFactor;
-        }
-        
-        // Clamp scale to reasonable limits (same as mouse zoom)
-        newScale = Math.max(0.1, Math.min(3, newScale));
-        
-        // Calculate the zoom center (center of viewport)
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        // Calculate new translation to zoom towards center
-        const newX = centerX - (centerX - currentTransform.x) * (newScale / currentTransform.k);
-        const newY = centerY - (centerY - currentTransform.y) * (newScale / currentTransform.k);
-        
-        // Apply the new transform with smooth transition
-        svg.transition()
-            .duration(300)
-            .call(zoom.transform, d3.zoomIdentity
-                .translate(newX, newY)
-                .scale(newScale));
-    }
-});
 
 // Initialize on load
 initialize();
 
 // Handle window resize
 window.addEventListener('resize', function() {
-    // You can add resize handling if needed
+    // Add resize handling if needed
 });
 </script>
 
