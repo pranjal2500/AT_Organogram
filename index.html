@@ -449,6 +449,23 @@ const nodeHeight = 150;
 const verticalSpacing = 180;
 const horizontalSpacing = 300;
 
+// Grade order for sorting children
+const gradeOrder = ['T-2', 'T-1', 'P-4', 'P-3', 'P-2', 'P-1', 'D-3', 'D-2', 'D-1', 
+                    'S-3', 'S-2', 'S-1', 'M-3', 'M-2', 'M-1', 'E-3', 'E-2', 'E-1', 'I'];
+
+// Function to normalize grade (remove A/B suffix)
+function normalizeGrade(grade) {
+    if (!grade) return 'UNKNOWN';
+    return grade.toString().replace(/[AB]$/i, '').trim();
+}
+
+// Function to get grade order index
+function getGradeIndex(grade) {
+    const normalized = normalizeGrade(grade);
+    const index = gradeOrder.indexOf(normalized);
+    return index === -1 ? 999 : index; // Unknown grades go to the end
+}
+
 // Global variables
 let root;
 let svg, g, tree, zoom;
@@ -746,6 +763,36 @@ function buildHierarchy(data) {
         isVirtual: true,
         children: topManagers
     };
+    
+    // Sort all children by grade recursively
+    function sortChildrenByGrade(node) {
+        if (node.children && node.children.length > 0) {
+            // Helper function to count total descendants
+            function countAllDescendants(emp) {
+                if (!emp.children || emp.children.length === 0) return 0;
+                let count = emp.children.length;
+                emp.children.forEach(child => {
+                    count += countAllDescendants(child);
+                });
+                return count;
+            }
+            
+            // Sort children by grade order, then by descendant count
+            node.children.sort((a, b) => {
+                // Primary sort: by grade
+                const gradeCompare = getGradeIndex(a.grade) - getGradeIndex(b.grade);
+                if (gradeCompare !== 0) return gradeCompare;
+                
+                // Secondary sort: by descendant count (descending - higher count first)
+                return countAllDescendants(b) - countAllDescendants(a);
+            });
+            
+            // Recursively sort children's children
+            node.children.forEach(child => sortChildrenByGrade(child));
+        }
+    }
+    
+    sortChildrenByGrade(rootNode);
     
     return rootNode;
 }
@@ -1281,12 +1328,12 @@ document.addEventListener('gesturechange', function(e) {
 
 document.addEventListener('gestureend', function(e) {
     e.preventDefault();
-})
+});
+
 // Prevent ctrl/cmd + scroll zoom
 document.addEventListener('wheel', function(e) {
     if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-;
     }
 }, { passive: false });
 
@@ -1310,9 +1357,6 @@ document.addEventListener('touchend', function(e) {
 // =======================================================
 // AUTO-REFRESH - REMOVED (Now using manual refresh button)
 // =======================================================
-
-// =======================================================
-// KEYBOARD ARROW KEY NAVIGATION
 
 // Initialize on load
 initialize();
