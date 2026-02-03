@@ -922,12 +922,12 @@ function update(source) {
     // Count badge logic
     const badgeGroup = nodeEnter.append("g")
         .attr("class", "badge-group")
-        .attr("transform", `translate(${nodeWidth / 2 - 28}, ${-nodeHeight / 2 + 15})`)
+        .attr("transform", `translate(${nodeWidth / 2 - 28}, ${-nodeHeight / 2 + 20})`)
         .style("opacity", d => d._children ? 1 : 0);
     
     badgeGroup.append("circle")
         .attr("class", "count-badge-bg")
-        .attr("r", 14);
+        .attr("r", 15);
     
     badgeGroup.append("text")
         .attr("class", "count-badge")
