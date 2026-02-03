@@ -444,8 +444,8 @@ const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tq
 const HEADER_HEIGHT = 70; // Must match --header-height in CSS
 const width = window.innerWidth;
 const height = window.innerHeight - HEADER_HEIGHT;
-const nodeWidth = 280;
-const nodeHeight = 150;
+const nodeWidth = 238;  // 280 * 0.85 = 238
+const nodeHeight = 127.5;  // 150 * 0.85 = 127.5
 const verticalSpacing = 180;
 const horizontalSpacing = 300;
 
@@ -850,29 +850,29 @@ function update(source) {
     // --- NEW 5-ITEM LIST (Adjusted Spacing) ---
     
     // Item 1: Empid
-    nodeEnter.append("text")
-        .attr("class", "node-label")
-        .attr("x", 0)
-        .attr("y", -12)  // Moved up
-        .attr("text-anchor", "middle")
-        .style("font-size", "11px")
-        .style("font-weight", "500")
-        .style("fill", "#4b5563")
-        .text(d => `Empid: ${d.data.empid || "-"}`)
-        .style("fill-opacity", 1e-6);
+    // nodeEnter.append("text")
+    //     .attr("class", "node-label")
+    //     .attr("x", 0)
+    //     .attr("y", -12)  // Moved up
+    //     .attr("text-anchor", "middle")
+    //     .style("font-size", "11px")
+    //     .style("font-weight", "500")
+    //     .style("fill", "#4b5563")
+    //     .text(d => `${d.data.empid || "-"}`)
+    //     .style("fill-opacity", 1e-6);
 
     // Item 2: Dept
     nodeEnter.append("text")
         .attr("class", "node-label")
         .attr("x", 0)
-        .attr("y", 4)   // Moved up
+        .attr("y", -12)   // Moved up
         .attr("text-anchor", "middle")
         .style("font-size", "11px")
         .style("font-weight", "500")
         .style("fill", "#4b5563")
         .text(d => {
             const val = d.data.department || "-";
-            return `Dept: ${val.length > 28 ? val.substring(0, 28) + "..." : val}`;
+            return `${val.length > 28 ? val.substring(0, 28) + "..." : val}`;
         })
         .style("fill-opacity", 1e-6);
 
@@ -880,14 +880,14 @@ function update(source) {
     nodeEnter.append("text")
         .attr("class", "node-label")
         .attr("x", 0)
-        .attr("y", 20)  // Moved up
+        .attr("y", 4)  // Moved up
         .attr("text-anchor", "middle")
         .style("font-size", "11px")
         .style("font-weight", "500")
         .style("fill", "#4b5563")
         .text(d => {
             const val = d.data.designation || "-";
-            return `Desig: ${val.length > 28 ? val.substring(0, 28) + "..." : val}`;
+            return `${val.length > 28 ? val.substring(0, 28) + "..." : val}`;
         })
         .style("fill-opacity", 1e-6)
         .append("title")
@@ -897,7 +897,7 @@ function update(source) {
     nodeEnter.append("text")
         .attr("class", "node-label")
         .attr("x", 0)
-        .attr("y", 36)  // Moved up
+        .attr("y", 20)  // Moved up
         .attr("text-anchor", "middle")
         .style("font-size", "11px")
         .style("font-weight", "500")
@@ -905,16 +905,16 @@ function update(source) {
         .text(d => `Grade: ${d.data.grade || "-"}`)
         .style("fill-opacity", 1e-6);
 
-    // Item 5: Location (NEW)
-    nodeEnter.append("text")
+    // Item 5: Location with icon
+     nodeEnter.append("text")
         .attr("class", "node-label")
         .attr("x", 0)
-        .attr("y", 52)  // Bottom slot
+        .attr("y", 36)  // Bottom slot
         .attr("text-anchor", "middle")
         .style("font-size", "11px")
         .style("font-weight", "500")
         .style("fill", "#4b5563")
-        .text(d => `Base Location: ${d.data.location || "-"}`)
+        .text(d => `📍 ${d.data.location || "-"}`)
         .style("fill-opacity", 1e-6);
 
     // --- END LIST ---
@@ -950,6 +950,9 @@ function update(source) {
     
     nodeUpdate.selectAll("text").style("fill-opacity", 1);
     
+    // Update location icon opacity
+    nodeUpdate.selectAll(".location-group path").style("opacity", 1);
+    
     nodeUpdate.select(".badge-group").style("opacity", d => d._children ? 1 : 0);
     nodeUpdate.select(".badge-group .count-badge").text(d => d._children ? `+${countDescendants(d)}` : "");
     
@@ -960,6 +963,7 @@ function update(source) {
     
     nodeExit.select("rect").style("opacity", 1e-6);
     nodeExit.selectAll("text").style("fill-opacity", 1e-6);
+    nodeExit.selectAll(".location-group path").style("opacity", 1e-6);
     
     // Update links
     const link = g.selectAll(".link").data(links, d => d.target.data.name);
