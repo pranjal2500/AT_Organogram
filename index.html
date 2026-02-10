@@ -560,8 +560,7 @@ function loadAndRenderData() {
         // Create root
         root = d3.hierarchy(hierarchyData);
         
-        // Collapse all children first
-        root.children.forEach(collapse);
+        
         
         // Then collapse the root itself so nothing shows on initial load
         collapse(root);
