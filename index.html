@@ -440,6 +440,13 @@ const SHEET_NAME = "Admin_Sheet"; // Replace with your sheet name
 
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
 
+// Top-level whitelist - employees in this list will appear at top level regardless of their manager
+const TOP_LEVEL_WHITELIST = [
+    "Kanishka Tongya",
+    "Jagmeet Singh",
+    "SP Yadav"
+];
+    
 // Chart dimensions
 const HEADER_HEIGHT = 70; // Must match --header-height in CSS
 const width = window.innerWidth;
