@@ -446,6 +446,16 @@ const TOP_LEVEL_WHITELIST = [
     "Jagmeet Singh",
     "SP Yadav"
 ];
+
+// Employees in these departments will be completely hidden
+const DEPT_BLACKLIST = [
+    "Third Party Installer",
+    "Operations- Installer Dedicated",
+    "Operations- Installer Non-Dedicated",
+    "Operations- Installer",
+    "Test-Department-prime-Chat",
+    "Testing_department"
+];
     
 // Chart dimensions
 const HEADER_HEIGHT = 70; // Must match --header-height in CSS
@@ -649,9 +659,15 @@ function buildHierarchy(data) {
         const id = row.Id ? row.Id.toString().trim() : "";
         const empid = row.Empid ? row.Empid.trim() : "";
         const remark = row.Remark ? row.Remark.trim() : "";
+        const department = row["Department Name"] ? row["Department Name"].trim() : ""; // Extract department here
         
         // Skip employees with Remark = "No"
         if (remark.toLowerCase() === "no") {
+            return;
+        }
+
+        // NEW: Skip employees in Blacklisted Departments
+        if (DEPT_BLACKLIST.includes(department)) {
             return;
         }
         
