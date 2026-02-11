@@ -714,14 +714,22 @@ function buildHierarchy(data) {
         });
     });
     
-    // Find top-level managers (those with "-" as manager)
+    // Find top-level managers (those with "-" as manager OR in whitelist)
     const topManagers = [];
     const assignedEmployees = new Set();
     
     employeeMap.forEach((employee, id) => {
-        if (employee.managerId === "-" || employee.managerId === undefined) {
+        // Check if employee is in whitelist OR has "-" as manager
+        const isInWhitelist = TOP_LEVEL_WHITELIST.includes(employee.name);
+        const hasNoManager = employee.managerId === "-" || employee.managerId === undefined;
+        
+        if (isInWhitelist || hasNoManager) {
             topManagers.push(employee);
             assignedEmployees.add(id);
+            
+            if (isInWhitelist) {
+                console.log(`Adding ${employee.name} to top level (whitelist)`);
+            }
         }
     });
     
@@ -730,6 +738,11 @@ function buildHierarchy(data) {
     // Build parent-child relationships using IDs
     employeeMap.forEach((employee, id) => {
         if (employee.managerId !== "-" && employee.managerId !== undefined) {
+            // Skip if this employee is in the whitelist (already at top level)
+            if (TOP_LEVEL_WHITELIST.includes(employee.name)) {
+                return;
+            }
+            
             const manager = employeeMap.get(employee.managerId);
             if (manager) {
                 manager.children.push(employee);
